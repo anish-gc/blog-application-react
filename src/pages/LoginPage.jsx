@@ -14,15 +14,11 @@ export const LoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    console.log('Form submitted'); // Debug log
-    console.log('Current state:', { username, password: '***', isLoading }); // Debug log
 
     setLoading(true)
     setError('')
 
     try {
-      console.log('Calling API login...'); // Debug log
-      console.log('API endpoint will be: http://localhost:8000/api/login/'); // Debug log
 
       // Add a timeout to see if the request is hanging
       const timeoutPromise = new Promise((_, reject) => {
@@ -31,30 +27,19 @@ export const LoginPage = () => {
 
       const apiPromise = api.login({ username, password });
 
-      console.log('Waiting for API response...'); // Debug log
       const response = await Promise.race([apiPromise, timeoutPromise]);
 
-      console.log('Login successful:', response); // Debug log
 
       if (response && response.user && response.token) {
         setUser(response.user, response.token)
         navigate('/')
       } else {
-        console.error('Invalid response structure:', response);
         setError('Invalid response from server')
       }
     } catch (err) {
-      console.error('Login error caught:', err); // Debug log
-      console.error('Error details:', {
-        message: err.message,
-        stack: err.stack,
-        response: err.response,
-        request: err.request
-      }); // More detailed error log
 
       setError(err.message || 'Login failed')
     } finally {
-      console.log('Setting loading to false'); // Debug log
       setLoading(false)
     }
   }
@@ -62,7 +47,6 @@ export const LoginPage = () => {
   // Test function to check if backend is reachable
   const testConnection = async () => {
     try {
-      console.log('Testing connection to backend...');
       const response = await fetch('http://localhost:8000/api/auth/login/', {
         method: 'OPTIONS',
         headers: {

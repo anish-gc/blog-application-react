@@ -8,7 +8,7 @@ const Navbar = () => {
 
   const handleLogout = () => {
     logout()
-    navigate('/')
+    navigate('/login')
   }
 
   return (
@@ -21,12 +21,7 @@ const Navbar = () => {
           {user ? (
             <>
               <span className="text-blue-200">Welcome, {user.username}!</span>
-              <Link 
-                to="/create" 
-                className="bg-blue-500 px-3 py-1 rounded hover:bg-blue-400 transition-colors"
-              >
-                Create Post
-              </Link>
+             
               <button 
                 onClick={handleLogout}
                 className="bg-red-500 px-3 py-1 rounded hover:bg-red-400 transition-colors"

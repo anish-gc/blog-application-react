@@ -1,41 +1,77 @@
-// src/components/PostForm.jsx
+
+
+// src/components/PostForm.jsx - Updated to handle validation errors
 import { useState } from 'react'
 
 const PostForm = ({ initialData, onSubmit, submitText }) => {
   const [title, setTitle] = useState(initialData?.title || '')
   const [content, setContent] = useState(initialData?.content || '')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [errors, setErrors] = useState({}) 
+  const [generalError, setGeneralError] = useState('') 
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
+    // Clear previous errors
+    setErrors({})
+    setGeneralError('')
+
+    // Basic client-side validation
     if (!title.trim() || !content.trim()) {
-      setError('Title and content are required')
+      setGeneralError('Title and content are required')
       return
     }
 
     setLoading(true)
-    setError('')
 
     try {
       await onSubmit({ title: title.trim(), content: content.trim() })
+      // If successful, reset form (optional)
+      setTitle('')
+      setContent('')
     } catch (err) {
-      setError(err.message || 'Failed to save post')
+      if (err.type === 'validation') {
+        // Handle validation errors - set field-specific errors
+        setErrors(err.errors)
+      } else if (err.type === 'general') {
+        // Handle general errors
+        setGeneralError(err.message)
+      } else {
+        // Handle old-style errors (string messages)
+        setGeneralError(err.message || 'Failed to save post')
+      }
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Clear field error when user starts typing
+  const handleTitleChange = (e) => {
+    setTitle(e.target.value)
+    if (errors.title) {
+      setErrors(prev => ({ ...prev, title: undefined }))
+    }
+  }
+
+  const handleContentChange = (e) => {
+    setContent(e.target.value)
+    if (errors.content) {
+      setErrors(prev => ({ ...prev, content: undefined }))
     }
   }
 
   return (
     <div className="max-w-2xl mx-auto p-6">
       <form onSubmit={handleSubmit} className="bg-white shadow-lg rounded-lg p-6">
-        {error && (
+        {/* General error message */}
+        {generalError && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-            {error}
+            {generalError}
           </div>
         )}
-        
+
+        {/* Title field */}
         <div className="mb-6">
           <label className="block text-gray-700 text-sm font-bold mb-2">
             Title
@@ -43,27 +79,36 @@ const PostForm = ({ initialData, onSubmit, submitText }) => {
           <input
             type="text"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            onChange={handleTitleChange}
+            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.title ? 'border-red-500 bg-red-50' : 'border-gray-300'
+              }`}
             placeholder="Enter post title"
-            required
             disabled={loading}
           />
+          {/* Field-specific error for title */}
+          {errors.title && (
+            <p className="mt-1 text-sm text-red-600">{errors.title}</p>
+          )}
         </div>
 
+        {/* Content field */}
         <div className="mb-6">
           <label className="block text-gray-700 text-sm font-bold mb-2">
             Content
           </label>
           <textarea
             value={content}
-            onChange={(e) => setContent(e.target.value)}
+            onChange={handleContentChange}
             rows={12}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"
+            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical ${errors.content ? 'border-red-500 bg-red-50' : 'border-gray-300'
+              }`}
             placeholder="Write your post content here..."
-            required
             disabled={loading}
           />
+          {/* Field-specific error for content */}
+          {errors.content && (
+            <p className="mt-1 text-sm text-red-600">{errors.content}</p>
+          )}
         </div>
 
         <button

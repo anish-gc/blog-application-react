@@ -6,8 +6,14 @@ const CreatePostPage = () => {
   const navigate = useNavigate()
 
   const handleSubmit = async (postData) => {
-    await api.createPost(postData)
-    navigate('/')
+    try {
+      await api.createPost(postData)
+      // Navigate to home page or show success message
+      navigate('/')
+    } catch (error) {
+      // Re-throw the error so PostForm can handle it
+      throw error
+    }
   }
 
   return (

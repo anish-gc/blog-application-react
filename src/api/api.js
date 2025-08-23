@@ -1,10 +1,10 @@
-// src/api/api.js
+// src/api/api.js - Complete file with getUserPosts added
 import axios from 'axios'
 import { authStore } from '../stores/authStore'
 
 // Create axios instance with base configuration
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8000/api', // Your Django API URL
+  baseURL: 'http://localhost:8000/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -37,20 +37,16 @@ apiClient.interceptors.response.use(
   }
 )
 
-
 // API functions
 export const api = {
   // Auth endpoints
   login: async (credentials) => {
     try {
       const response = await apiClient.post('/auth/login/', credentials)
-      console.log('Login response:', response.data); // Debug log
-
       return response.data
     } catch (error) {
-      console.error('Login error:', error); // Debug log
-      console.error('Error response:', error.response); // Debug log
-      // Better error handling
+     
+
       if (error.response?.data?.error) {
         throw new Error(error.response.data.error)
       } else if (error.response?.data?.message) {
@@ -71,18 +67,17 @@ export const api = {
 
   register: async (userData) => {
     try {
-      console.log('Attempting registration with:', userData); // Debug log
-      const response = await apiClient.post('/register/', userData) // Remove 'auth/' from path
-      console.log('Registration response:', response.data); // Debug log
+      const response = await apiClient.post('/auth/register/', userData)
       return response.data
     } catch (error) {
-      console.error('Registration error:', error); // Debug log
-      console.error('Error response:', error.response); // Debug log
-
       if (error.response?.data) {
+        const status = error.response.status;
         const errorData = error.response.data
+
+        if (status >= 400 && status < 600 && typeof error.response.data === 'string') {
+          throw new Error('Something went wrong. Please try again later.')
+        }
         if (typeof errorData === 'object') {
-          // Extract first error message from Django's error format
           const firstError = Object.values(errorData)[0]
           if (Array.isArray(firstError)) {
             throw new Error(firstError[0])
@@ -91,12 +86,13 @@ export const api = {
           }
         } else if (typeof errorData === 'string') {
           throw new Error(errorData)
+        } else if (error.code === "ERR_BAD_REQUEST") {
+          throw new Error('Server error. Please try again later.')
         }
       }
       throw new Error(error.message || 'Registration failed')
     }
   },
-
 
   getPosts: async () => {
     try {
@@ -118,16 +114,29 @@ export const api = {
 
   createPost: async (postData) => {
     try {
-      const response = await apiClient.post('/posts/', postData)
-      return response.data
+      const response = await apiClient.post('/posts/create/', postData);
+      return response.data;
     } catch (error) {
-      throw new Error(error.response?.data?.message || 'Failed to create post')
+      // Check if it's a validation error (400 status with errors object)
+      if (error.response?.status === 400 && error.response?.data?.errors) {
+        // Throw the validation errors object
+        throw {
+          type: 'validation',
+          errors: error.response.data.errors
+        };
+      }
+
+      // For other types of errors
+      throw {
+        type: 'general',
+        message: error.response?.data?.message || error.response?.data?.detail || 'Failed to create post'
+      };
     }
   },
 
   updatePost: async (id, postData) => {
     try {
-      const response = await apiClient.put(`/posts/${id}/`, postData)
+      const response = await apiClient.put(`/posts/${id}/update/`, postData)
       return response.data
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Failed to update post')
@@ -136,10 +145,20 @@ export const api = {
 
   deletePost: async (id) => {
     try {
-      const response = await apiClient.delete(`/posts/${id}/`)
+      const response = await apiClient.delete(`/posts/${id}/delete/`)
       return response.data
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Failed to delete post')
+    }
+  },
+
+  // Get user's own posts (authenticated)
+  getUserPosts: async () => {
+    try {
+      const response = await apiClient.get('/posts/my-posts/')
+      return response.data
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch user posts')
     }
   }
 }

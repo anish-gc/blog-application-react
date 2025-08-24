@@ -10,9 +10,7 @@ import { authStore } from './stores/authStore.js'
 authStore.getState().init()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
     <BrowserRouter>
       <App />
     </BrowserRouter>
-  </React.StrictMode>,
 )

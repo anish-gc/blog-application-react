@@ -8,18 +8,27 @@ export const RegisterPage = () => {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const { isLoading, setUser, setLoading } = useAuthStore()
+  const [successMessage, setSuccessMessage] = useState('') // Add success message state
+  const { isLoading, setLoading } = useAuthStore() // Remove setUser since we're not logging in automatically
   const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
     setError('')
+    setSuccessMessage('') // Reset success message
 
     try {
       const response = await api.register({ username, password })
-      setUser(response.user, response.token)
-      navigate('/')
+
+      // Show success message and redirect to login
+      setSuccessMessage('Registration successful! Please login with your credentials.')
+
+      // Redirect to login page after a short delay
+      setTimeout(() => {
+        navigate('/login')
+      }, 2000)
+
     } catch (err) {
       setError(err.message || 'Registration failed')
     } finally {
@@ -39,6 +48,12 @@ export const RegisterPage = () => {
             </div>
           )}
 
+          {successMessage && (
+            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+              {successMessage}
+            </div>
+          )}
+
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2">
               Username
@@ -52,7 +67,6 @@ export const RegisterPage = () => {
               disabled={isLoading}
             />
           </div>
-
 
           <div className="mb-6">
             <label className="block text-gray-700 text-sm font-bold mb-2">

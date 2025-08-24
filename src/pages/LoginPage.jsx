@@ -47,12 +47,13 @@ export const LoginPage = () => {
   // Test function to check if backend is reachable
   const testConnection = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/auth/login/', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/login/`, {
         method: 'OPTIONS',
         headers: {
           'Content-Type': 'application/json',
         }
       });
+      
       console.log('Connection test result:', response.status, response.statusText);
     } catch (error) {
       console.error('Connection test failed:', error);
@@ -78,8 +79,8 @@ export const LoginPage = () => {
         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
           <div className="text-sm text-blue-800">
             <strong>Demo credentials:</strong><br />
-            Username: <code className="bg-blue-100 px-1 rounded">demoadmin</code><br />
-            Password: <code className="bg-blue-100 px-1 rounded">demopassword</code>
+            Username: <code className="bg-blue-100 px-1 rounded">anishchengre</code><br />
+            Password: <code className="bg-blue-100 px-1 rounded">1</code>
           </div>
         </div>
 

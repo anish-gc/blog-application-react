@@ -1,4 +1,4 @@
-// src/components/BlogList.jsx - Updated with delete functionality
+// src/components/BlogList.jsx - Updated with pagination functionality
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api/api'
@@ -11,6 +11,15 @@ const BlogList = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [authInitialized, setAuthInitialized] = useState(false)
   const [deletingPostId, setDeletingPostId] = useState(null)
+  const [pagination, setPagination] = useState({
+    page: 1,
+    pages: 1,
+    per_page: 20,
+    total: 0,
+    has_next: false,
+    has_previous: false
+  })
+  const [currentPage, setCurrentPage] = useState(1)
   const navigate = useNavigate()
 
   // Check authentication status on mount and subscribe to changes
@@ -34,49 +43,69 @@ const BlogList = () => {
     return unsubscribe
   }, [])
 
-  // Fetch posts when authentication state changes or component mounts
+  // Fetch posts when authentication state changes, component mounts, or page changes
   useEffect(() => {
     // Don't fetch until we've determined the auth state
     if (!authInitialized) {
       return
     }
 
-    fetchPosts();
-  }, [isAuthenticated, authInitialized]) // Added authInitialized as dependency
+    fetchPosts(currentPage);
+  }, [isAuthenticated, authInitialized, currentPage])
 
-  const fetchPosts = async () => {
+  const fetchPosts = async (page = 1) => {
     try {
       setLoading(true)
       setError('')
-      let fetchedPosts
-
+      let response
 
       if (isAuthenticated) {
         // Fetch only user's posts when authenticated
-        fetchedPosts = await api.getUserPosts()
+        response = await api.getUserPosts(page)
       } else {
         // Fetch all posts when not authenticated
-        fetchedPosts = await api.getPosts()
+        response = await api.getPosts(page)
       }
 
       // Handle different response formats
       let postsArray = []
-      if (Array.isArray(fetchedPosts)) {
-        postsArray = fetchedPosts
-      } else if (fetchedPosts && Array.isArray(fetchedPosts.data)) {
-        postsArray = fetchedPosts.data
-      } else if (fetchedPosts && Array.isArray(fetchedPosts.posts)) {
-        postsArray = fetchedPosts.posts
+      let paginationData = {
+        page: 1,
+        pages: 1,
+        per_page: 20,
+        total: 0,
+        has_next: false,
+        has_previous: false
+      }
+
+      if (Array.isArray(response)) {
+        // Legacy format - just an array of posts
+        postsArray = response
+      } else if (response && response.posts) {
+        // New format with pagination
+        postsArray = response.posts || []
+        paginationData = response.pagination || paginationData
+      } else if (response && Array.isArray(response.data)) {
+        postsArray = response.data
       } else {
         postsArray = []
       }
 
       setPosts(postsArray)
+      setPagination(paginationData)
       setError('')
     } catch (err) {
       setError('Failed to fetch posts')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= pagination.pages) {
+      setCurrentPage(newPage)
+      // Scroll to top when page changes
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     }
   }
 
@@ -96,6 +125,18 @@ const BlogList = () => {
       // Remove the deleted post from the list
       setPosts(prevPosts => prevPosts.filter(post => post.id !== postId))
 
+      // Update pagination total
+      setPagination(prev => ({
+        ...prev,
+        total: Math.max(0, prev.total - 1)
+      }))
+
+      // If this was the last post on the current page and we're not on page 1,
+      // go to the previous page
+      if (posts.length === 1 && currentPage > 1) {
+        handlePageChange(currentPage - 1)
+      }
+
       // Show success message
       setError('')
       alert('Post deleted successfully!')
@@ -108,6 +149,40 @@ const BlogList = () => {
 
   const handleViewClick = (postId) => {
     navigate(`/posts/${postId}`)
+  }
+
+  // Generate page numbers for pagination UI
+  const getPageNumbers = () => {
+    const { page, pages } = pagination
+    const pageNumbers = []
+    const maxVisiblePages = 5
+
+    if (pages <= maxVisiblePages) {
+      // Show all pages if total pages is small
+      for (let i = 1; i <= pages; i++) {
+        pageNumbers.push(i)
+      }
+    } else {
+      // Show smart pagination with ellipsis
+      const startPage = Math.max(1, page - 2)
+      const endPage = Math.min(pages, page + 2)
+
+      if (startPage > 1) {
+        pageNumbers.push(1)
+        if (startPage > 2) pageNumbers.push('...')
+      }
+
+      for (let i = startPage; i <= endPage; i++) {
+        pageNumbers.push(i)
+      }
+
+      if (endPage < pages) {
+        if (endPage < pages - 1) pageNumbers.push('...')
+        pageNumbers.push(pages)
+      }
+    }
+
+    return pageNumbers
   }
 
   if (loading) {
@@ -125,7 +200,7 @@ const BlogList = () => {
       <div className="text-center py-12">
         <div className="text-red-600 text-lg">{error}</div>
         <button
-          onClick={fetchPosts}
+          onClick={() => fetchPosts(currentPage)}
           className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
         >
           Retry
@@ -157,9 +232,16 @@ const BlogList = () => {
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">
-          {isAuthenticated ? 'My Posts' : 'Latest Posts'}
-        </h1>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">
+            {isAuthenticated ? 'My Posts' : 'Latest Posts'}
+          </h1>
+          {pagination.total > 0 && (
+            <p className="text-gray-600 mt-2">
+              Showing {posts.length} of {pagination.total} posts
+            </p>
+          )}
+        </div>
         {isAuthenticated && (
           <Link
             to="/create/post"
@@ -233,6 +315,53 @@ const BlogList = () => {
           </article>
         ))}
       </div>
+
+      {/* Pagination Controls */}
+      {pagination.pages > 1 && (
+        <div className="flex justify-center items-center mt-12 space-x-2">
+          {/* Previous Button */}
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={!pagination.has_previous}
+            className="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-l-md hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400 transition-colors"
+          >
+            Previous
+          </button>
+
+          {/* Page Numbers */}
+          {getPageNumbers().map((pageNum, index) => (
+            <button
+              key={index}
+              onClick={() => typeof pageNum === 'number' ? handlePageChange(pageNum) : null}
+              disabled={typeof pageNum !== 'number'}
+              className={`px-4 py-2 text-sm font-medium border transition-colors ${pageNum === currentPage
+                  ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
+                  : typeof pageNum === 'number'
+                    ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
+                    : 'text-gray-400 bg-gray-100 border-gray-300 cursor-default'
+                }`}
+            >
+              {pageNum}
+            </button>
+          ))}
+
+          {/* Next Button */}
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={!pagination.has_next}
+            className="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-r-md hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400 transition-colors"
+          >
+            Next
+          </button>
+        </div>
+      )}
+
+      {/* Pagination Info */}
+      {pagination.total > 0 && (
+        <div className="text-center text-sm text-gray-600 mt-4">
+          Page {pagination.page} of {pagination.pages}
+        </div>
+      )}
     </div>
   )
 }

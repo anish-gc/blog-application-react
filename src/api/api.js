@@ -1,4 +1,4 @@
-// src/api/api.js - Complete file with getUserPosts added
+// src/api/api.js - Complete file with pagination support
 import axios from 'axios'
 import { authStore } from '../stores/authStore'
 
@@ -45,8 +45,6 @@ export const api = {
       const response = await apiClient.post('/auth/login/', credentials)
       return response.data
     } catch (error) {
-
-
       if (error.response?.data?.error) {
         throw new Error(error.response.data.error)
       } else if (error.response?.data?.message) {
@@ -94,9 +92,12 @@ export const api = {
     }
   },
 
-  getPosts: async () => {
+  // Updated to support pagination
+  getPosts: async (page = 1, perPage = 20) => {
     try {
-      const response = await apiClient.get('/posts/')
+      const response = await apiClient.get('/posts/', {
+        params: { page, per_page: perPage }
+      })
       return response.data
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Failed to fetch posts')
@@ -152,10 +153,12 @@ export const api = {
     }
   },
 
-  // Get user's own posts (authenticated)
-  getUserPosts: async () => {
+  // Updated to support pagination
+  getUserPosts: async (page = 1, perPage = 20) => {
     try {
-      const response = await apiClient.get('/posts/my-posts/')
+      const response = await apiClient.get('/posts/my-posts/', {
+        params: { page, per_page: perPage }
+      })
       return response.data
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Failed to fetch user posts')
